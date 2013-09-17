@@ -18,4 +18,14 @@ module Parallel
     end
   end
 
+  class << self
+
+    def handle_exception(exception, results)
+      return nil if exception.class == Parallel::Break
+      raise exception if exception
+      results
+    end
+
+  end
+
 end
