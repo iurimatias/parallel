@@ -1,57 +1,10 @@
 require 'thread' # to get Thread.exclusive
 require 'rbconfig'
 require 'parallel/version'
+require 'parallel/exceptions'
+require 'parallel/worker'
 
 module Parallel
-  class DeadWorker < Exception
-  end
-
-  class Break < Exception
-  end
-
-  class ExceptionWrapper
-    attr_reader :exception
-    def initialize(exception)
-      dumpable = Marshal.dump(exception) rescue nil
-      unless dumpable
-        exception = RuntimeError.new("Undumpable Exception -- #{exception.inspect}")
-      end
-
-      @exception = exception
-    end
-  end
-
-  class Worker
-    attr_reader :pid, :read, :write
-    def initialize(read, write, pid)
-      @read, @write, @pid = read, write, pid
-    end
-
-    def close_pipes
-      read.close
-      write.close
-    end
-
-    def wait
-      Process.wait(pid)
-    rescue Interrupt
-      # process died
-    end
-
-    def work(index)
-      begin
-        Marshal.dump(index, write)
-      rescue Errno::EPIPE
-        raise DeadWorker
-      end
-
-      begin
-        Marshal.load(read)
-      rescue EOFError
-        raise Parallel::DeadWorker
-      end
-    end
-  end
 
   class << self
     def in_threads(options={:count => 2})
@@ -132,6 +85,7 @@ module Parallel
         $stderr.puts "Unknown architecture ( #{RbConfig::CONFIG["host_os"]} ) assuming one processor."
         1
       end
+      @processor_count
     end
 
     def physical_processor_count
